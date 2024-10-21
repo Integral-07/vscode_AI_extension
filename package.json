@@ -14,15 +14,26 @@
   ],
   "main": "./extension.js",
   "contributes": {
-    "commands": [{
+    "commands": [
+      {
       "command": "tt.reviewCode",
       "title": "reviewCode"
-    }],
+      },
+      {
+        "command": "tt.replaceVariable",
+        "title": "Replace Variable"
+      }
+  ],
     "menus":{
       "editor/context": [
         {
           "when":"editorFocus",
           "command" : "tt.reviewCode",
+          "group": "myGroup@1"
+        },
+        {
+          "when":"editorFocus",
+          "command" : "tt.replaceVariable",
           "group": "myGroup@1"
         }
       ]
@@ -33,7 +44,7 @@
   "scripts": {
     "lint": "eslint .",
     "pretest": "npm run lint",
-    "test": "vscode-test",
+    "test": "vscode-test"
   },
   "devDependencies": {
     "@types/vscode": "^1.94.0",

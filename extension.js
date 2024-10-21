@@ -16,7 +16,33 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 var suggestions = [];
 function activate(context) {
-    /*
+
+    let disposable = vscode.commands.registerCommand('tt.reviewCode', async () => {
+        // エディターのアクティブなテキストを取得
+        const editor = vscode.window.activeTextEditor;
+
+        if (!editor) {
+            vscode.window.showErrorMessage('エディターがアクティブではありません。');
+            return;
+        }
+
+        const selection = editor.selection;
+        let selectedText = editor.document.getText(selection);
+
+        if (!selectedText) {
+            
+            selectedText = editor.document.getText();
+        }
+
+        // Gemini APIに選択したコードを送信
+        const reviewResult = await reviewCodeWithGemini(selectedText);
+
+        // Webviewまたはエディターでレビュー結果を表示
+        displayReviewResult(reviewResult);
+    });
+
+    context.subscriptions.push(disposable);
+
     // CompletionItemProviderの登録
     const provider = vscode.languages.registerCompletionItemProvider(
         { scheme: 'file', language: '*' },
@@ -61,64 +87,42 @@ function activate(context) {
 
     context.subscriptions.push(hoverProvider);
 
-    // 置き換えのコマンドを登録
-    const replaceCommand = vscode.commands.registerCommand('replaceVariable', async (oldName, newName) => {
-        console.log(`Replacing ${oldName} with ${newName}`); // ログを追加
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-            const document = editor.document;
-            const text = document.getText();
-            const newText = text.replace(new RegExp(`\\b${oldName}\\b`, 'g'), newName); // 変数名を置き換え
-            const edit = new vscode.WorkspaceEdit();
-            edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), newText);
-            await vscode.workspace.applyEdit(edit); // 変更を適用
-            await document.save(); // 変更を保存
-        }
-    });
-
-    context.subscriptions.push(replaceCommand);
-
-    */
-    // コマンドの登録
-    let disposable = vscode.commands.registerCommand('extension.showOptions', () => {
-        const panel = vscode.window.createWebviewPanel(
-            'optionsPanel',
-            '選択肢',
-            vscode.ViewColumn.One,
-            {}
-        );
-
-        // Webviewのコンテンツを設定
-        panel.webview.html = getWebviewContent();
-
-        // Webviewからのメッセージを受信
-        panel.webview.onDidReceiveMessage(
-            message => {
-                switch (message.command) {
-                    case 'selectOption':
-                        vscode.window.showInformationMessage(`選択したオプション: ${message.option}`);
-                        return;
-                }
-            },
-            undefined,
-            context.subscriptions
-        );
-    });
-
-    context.subscriptions.push(disposable);
-
-    // コードのホバー時にコマンドを表示
     context.subscriptions.push(
         vscode.languages.registerHoverProvider('*', {
             provideHover(document, position) {
-                const hoverContent = new vscode.MarkdownString(`この単語をクリックして選択肢を表示します。`);
-                hoverContent.appendMarkdown(`[選択肢を表示](command:extension.showOptions)`);
-                return new vscode.Hover(hoverContent);
+                const wordRange = document.getWordRangeAtPosition(position);
+                const word = document.getText(wordRange);
+    
+                // 検出された単語に一致する提案を検索
+                const suggestion = suggestions.find(s => s.oldName === word);
+    
+                if (suggestion) {
+                    const hoverContent = new vscode.MarkdownString(`この単語に提案があります。`);
+                    
+                    // Markdownにリンクを追加して提案名を表示
+                    hoverContent.appendMarkdown(`\n**${suggestion.oldName}** を **${suggestion.newName}** に置き換えますか？`);
+                    hoverContent.appendMarkdown(`\n[**置き換える**](command:tt.replaceVariable)`);
+                    
+                    return new vscode.Hover(hoverContent);
+                } else {
+                    return; // 提案がない場合はホバーを表示しない
+                }
             }
         })
     );
 
-    /*
+    context.subscriptions.push(
+        vscode.commands.registerCommand('tt.replaceVariable', async (oldName, newName) => {
+            const editor = vscode.window.activeTextEditor;
+            if (editor) {
+                const document = editor.document;
+                await replaceVariable(document, oldName, newName);
+                vscode.window.showInformationMessage(`変数名を "${oldName}" から "${newName}" に置き換えました。`);
+            }
+        })
+    );
+
+    
     // エディタの変化を監視し、2秒後に変数名提案を取得
     const debouncedProcessChange = debounce(async (document) => {
         const text = document.getText();
@@ -135,6 +139,7 @@ function activate(context) {
 
     }, 2000);  // 2秒間のデバウンスを設定
 
+    
     // ドキュメントの変更を監視
     vscode.workspace.onDidChangeTextDocument(event => {
         const document = event.document;
@@ -142,26 +147,8 @@ function activate(context) {
         debouncedProcessChange(document);
         
     });
-    */
-}
-
-// Webviewに表示するHTMLコンテンツを生成
-function getWebviewContent() {
-    return `<!DOCTYPE html>
-    <html lang="ja">
-    <body>
-        <h1>選択肢</h1>
-        <button onclick="selectOption('選択肢1')">選択肢1</button>
-        <button onclick="selectOption('選択肢2')">選択肢2</button>
-
-        <script>
-            const vscode = acquireVsCodeApi();
-            function selectOption(option) {
-                vscode.postMessage({ command: 'selectOption', option: option });
-            }
-        </script>
-    </body>
-    </html>`;
+    
+    
 }
 
 function debounce(func, wait) {
@@ -174,6 +161,22 @@ function debounce(func, wait) {
             func(...args);
         }, wait);
     };
+}
+
+async function replaceVariable(document, oldName, newName) {
+    const text = document.getText();
+    
+    // 正規表現で古い変数名を検索
+    const regex = new RegExp(`\\b${oldName}\\b`, 'g'); // 単語境界を指定
+    const newText = text.replace(regex, newName);
+
+    // ドキュメントを更新
+    const edit = new vscode.TextEdit(new vscode.Range(0, 0, document.lineCount, 0), newText);
+    const workspaceEdit = new vscode.WorkspaceEdit();
+    workspaceEdit.set(document.uri, [edit]);
+
+    // 変更を適用
+    await vscode.workspace.applyEdit(workspaceEdit);
 }
 
 async function reviewCodeWithGemini(code){
@@ -200,7 +203,7 @@ async function getVariableSuggestions(code) {
         const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
         const prompt = `次のコードから変数やユーザ定義のオブジェクトやメソッドを検出して、\
-        処理の内容や値の内容に適切な名前を考えて、JOSN形式でoldNameとnewNameを次のように出力してください。最後の','は必要ありません。\n[{"oldName": "a", "newName": "SuggestedA"},\n{"oldName": "b", "newName": "SuggestedB"}]\n${code}`;
+        処理の内容や値の内容に適切な名前を2つずつ考えて、JOSN形式でoldNameとnewNameを次のように出力してください。最後の','は必要ありません。\n[{"oldName": "a", "newName": "SuggestedA"},\n{"oldName": "b", "newName": "SuggestedB"}]\n${code}`;
         const result = await model.generateContentStream(prompt);
         
         let rowText = '';
@@ -210,8 +213,6 @@ async function getVariableSuggestions(code) {
         
         let suggestions = JSON.parse(rowText.trim());
         console.log("Suggestions" + suggestions);
-
-        displayReviewResult(suggestions);
 
         return suggestions;
 
@@ -224,7 +225,18 @@ async function displayReviewResult(result) {
     const outputChannel = vscode.window.createOutputChannel('Code Review Results');
     outputChannel.appendLine('Code Review Results:');
 
-    outputChannel.show();
+    let text = '';
+    
+    // Stream結果を非同期で処理してテキストを生成
+    for await (const chunk of result.stream) {
+        const chunkText = chunk.text(); // それぞれのチャンクからテキストを取得
+        console.log(chunkText); // コンソールに出力
+        text += chunkText;
+    }
+
+    // アウトプットチャネルにテキストを表示
+    outputChannel.append(text);
+    outputChannel.show(); // エディタ内で出力を表示
 }
 
 // This method is called when your extension is deactivated
