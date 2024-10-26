@@ -4,7 +4,7 @@ const vscode = require('vscode');
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-let GEMINI_API_KEY = "AIzaSyDwibbdX4F4xE3wk9cn_kQWeNS-rGvMa6w";
+let GEMINI_API_KEY = "";
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // This method is called when your extension is activated
