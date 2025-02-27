@@ -1,3 +1,40 @@
+![](https://img.shields.io/badge/技育CAMP-2024_vol16_努力賞-brown)
+![](https://img.shields.io/badge/状態-デバック-red)
+![](https://img.shields.io/badge/build-passing-green)
+
+## プロジェクト名
+
+モチアシ（モチベーションアシスタント）
+
+<!-- プロジェクトについて -->
+
+## プロジェクトについて
+
+開発者のモチベーションを上げる, vscodeの拡張機能
+
+### 背景
+- 開発のモチベが上がらない　⇒　タイマー機能・ヒント機能
+- 適切な変数名を決めるのが難しい　⇒　名前提案・修正機能
+
+### 挙動
+生成AI（Gemini）にコード上のユーザ定義の部分で、文脈に適切な名前を提案させる
+
+![スクリーンショット 2025-02-27 115749](https://github.com/user-attachments/assets/389dce27-e8a6-4644-a913-c19e8dac74cb)
+
+## 使用技術一覧
+
+<!-- シールド一覧 -->
+<p style="display: inline">
+  <!-- フロントエンドのフレームワーク -->
+  <!-- バックエンドのフレームワーク -->
+  <!-- バックエンドの言語 -->
+  <img src="https://img.shields.io/badge/-Typescript-708ACC.svg?logo=typescript&style=for-the-badge">
+  <!-- ミドルウェア -->
+  <img src="https://img.shields.io/badge/-Gemini_API-181717.svg?logo=api&style=for-the-badge">
+  <!-- インフラ -->
+  <img src="https://img.shields.io/badge/-vsCode-336791.svg?logo=vscode&style=for-the-badge">
+</p>
+
 # tt README
 
 This is the README for your extension "tt". After writing up a brief description, we recommend including the following sections.
